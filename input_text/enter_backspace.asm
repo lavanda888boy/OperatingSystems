@@ -134,7 +134,7 @@ prev_line:
 
     mov ah, 02h
     dec dh
-    mov dl, 0
+    mov dl, 79
     int 10h
 
     jmp _start
