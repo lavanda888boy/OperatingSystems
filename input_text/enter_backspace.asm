@@ -58,16 +58,19 @@ handle_enter:
     cmp dl, 0
     je newline
 
+    cmp byte [char_counter], 0
+    je newline
+
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
+
     ; move cursor to the second next line
     mov ah, 02h
     inc dh
     inc dh
     mov dl, 0
     int 10h
-
-    ; clear the character buffer 
-    mov byte [si], 0
-    mov si, buffer
 
     jmp print_buffer
 
