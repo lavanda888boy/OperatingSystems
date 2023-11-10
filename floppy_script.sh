@@ -17,7 +17,7 @@ fi
 
 # Create an empty floppy disk image (1.44MB size)
 floppy_image="floppy.img"
-dd if=/dev/zero of="$floppy_image" bs=1M count=2
+dd if=/dev/zero of="$floppy_image" bs=512 count=2880
 
 # Write the binary file to the floppy image
 dd if="$binary_file" of="$floppy_image" conv=notrunc
