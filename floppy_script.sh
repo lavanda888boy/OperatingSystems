@@ -23,4 +23,3 @@ dd if=/dev/zero of="$floppy_image" bs=512 count=2880
 dd if="$binary_file" of="$floppy_image" conv=notrunc
 
 echo "Binary file '$binary_file' successfully added to floppy image '$floppy_image'."
-

@@ -20,7 +20,6 @@ section .text
 
 _start:
     ; set the delimiter copy parameters
-    mov si, delimiter
     mov di, buffer
 
     mov dx, delimiter_length
@@ -34,6 +33,7 @@ _start:
 
 write_buffer:
     ; copy the delimiter a certain number of times consecutively into the buffer
+    mov si, delimiter
     mov cx, delimiter_length
     rep movsb
 
