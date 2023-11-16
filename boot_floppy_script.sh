@@ -9,14 +9,14 @@ if [ ! -f "$binary_file" ]; then
     exit 1
 fi
 
+nasm -f bin $bootloader -o bootloader.bin
+
 # Create an empty floppy disk image (1.44MB size)
 floppy_image="floppy.img"
-dd if=/dev/zero of="$floppy_image" bs=512 count=2880
+truncate -s 1474560 bootloader.bin
+mv bootloader.bin $floppy_image
 
-nasm -f bin $bootloader -o bootloader.bin
-cat bootloader.bin $binary_file > temp.img
-
-dd if=temp.img of="$floppy_image" conv=notrunc
+dd if="$binary_file" of="$floppy_image" bs=512 seek=1 conv=notrunc
 
 echo "Binary file '$binary_file' successfully added to floppy image '$floppy_image'."
 
