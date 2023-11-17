@@ -39,15 +39,9 @@ read_char:
     inc si
     inc byte [char_counter]
 
-    ; display character
-    mov ah, 0ah
-    mov bh, 0x00
-    mov cx, 1
-    int 10h
-
-    ; move cursor
-    mov ah, 02h
-    inc dl
+    ; display character as TTY
+    mov ah, 0eh
+    mov bl, 07h
     int 10h
 
     jmp read_char
@@ -55,9 +49,6 @@ read_char:
 
 ; handle ENTER key behavior
 handle_enter:
-    cmp dl, 0
-    je newline
-
     cmp byte [char_counter], 0
     je newline
 
@@ -65,76 +56,95 @@ handle_enter:
     mov byte [si], 0
     mov si, buffer
 
-    call buffer_new_line
-
     jmp print_buffer
 
 
 ; handle BACKSPACE key behavior
 handle_backspace:
-    cmp dl, 0
+    call find_current_cursor_position
+
+    cmp byte [char_counter], 0
     je read_char
 
-    ; clear last buffer char 
-    dec si
-    dec byte [char_counter]
+    cmp dl, 0
+    je previous_line
 
-    ; move cursor to the left
-    mov ah, 02h
-    dec dl
-    int 10h
+    jmp continue_backspace
 
-    ; print space instead of the cleared char
-    mov ah, 0ah
-    mov al, ' '
-    mov bh, 0x00
-    mov cx, 1
-    int 10h
+    previous_line:
+        call prev_line
+        jmp continue_backspace
 
-    jmp read_char
+    ; move backspace cursor to the previous line
+    prev_line:
+        call find_current_cursor_position
+
+        mov ah, 02h
+        dec dh
+        mov dl, 80
+        int 10h
+
+        ret
+
+    continue_backspace:
+        ; clear last buffer char 
+        dec si
+        dec byte [char_counter]
+
+        ; move cursor to the left
+        mov ah, 02h
+        dec dl
+        int 10h
+
+        ; print space instead of the cleared char
+        mov ah, 0ah
+        mov al, ' '
+        mov bh, 0x00
+        mov cx, 1
+        int 10h
+
+        jmp read_char
 
 
 ; print character buffer
 print_buffer:
-    lodsb; load character form edi into al
+    call find_current_cursor_position
 
-    test al, al
-    jz newline
-
-    ; display character
-    mov ah, 0ah
-    mov bh, 0x00
-    mov cx, 1
-    int 10h
-
-    ; move cursor
-    mov ah, 02h
-    inc dl
-    int 10h
-
-    jmp print_buffer
-
-
-; move cursor to the bottom of the buffer
-buffer_new_line:
-    ; find current cursor position
-    mov ah, 03h
-    int 10h
-
-    ; update the cursor correspondingly
-    mov ah, 02h
+    ; print the buffer
     inc dh
-    mov dl, 0
+    mov dl, 0h
+
+    mov ax, 0h
+    mov es, ax
+    mov bp, buffer
+    mov bl, 07h
+    mov cx, [char_counter]
+
+    mov ax, 1301h
     int 10h
 
-    ret
+    jmp newline
 
 
 ; move cursor to the beginning of the new line
 newline:
+    call find_current_cursor_position
+
     mov ah, 02h
     inc dh
     mov dl, 0
     int 10h
 
     jmp _start
+
+
+find_current_cursor_position:
+    ; find current cursor position
+    mov ah, 03h
+    mov bh, 0x00
+    int 10h
+
+    ret
+
+
+end:
