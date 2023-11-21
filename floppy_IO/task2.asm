@@ -80,6 +80,10 @@ read_number_of_operations:
 	mov ax, 1301h
 	int 10h    
 
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
+
     inc di
     jmp read_buffer
 
@@ -96,6 +100,10 @@ read_head:
 
 	mov ax, 1301h
 	int 10h    
+
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
 
     inc di
     jmp read_buffer
@@ -114,6 +122,10 @@ read_track:
 	mov ax, 1301h
 	int 10h    
 
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
+
     inc di
     jmp read_buffer
 
@@ -131,6 +143,10 @@ read_sector:
 	mov ax, 1301h
 	int 10h    
 
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
+
     inc di
     jmp read_buffer
 
@@ -147,6 +163,10 @@ read_data:
 
 	mov ax, 1301h
 	int 10h    
+
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
 
     inc di
     jmp read_buffer
@@ -192,8 +212,20 @@ handle_enter:
     mov si, buffer
 
     ; check if the input is a number and should be converted
-    cmp di, 0
-    jne convert_input
+    cmp di, 1
+    je convert_input
+
+    cmp di, 2
+    je convert_input
+
+    cmp di, 3
+    je convert_input
+
+    cmp di, 4
+    je convert_input
+
+    cmp di, 5
+    je next_prompt
 
     call newline
 
@@ -266,24 +298,49 @@ convert_input:
 
 ; select the next prompt to print
 next_prompt:
+    call newline
+
     cmp di, 1
-    je read_head
+    je go_to_read_head
 
     cmp di, 2
-    je read_track
+    je go_to_read_track
 
     cmp di, 3
-    je read_sector
+    je go_to_read_sector
 
     cmp di, 4
-    je read_data
+    je go_to_read_data
+
+    cmp di, 5
+    je print_buffer
 
     jmp end
 
 
+go_to_read_head:
+    jmp read_head
+
+
+go_to_read_track:
+    mov dh, al
+    jmp read_track
+
+
+go_to_read_sector:
+    mov ch, al
+    jmp read_sector
+
+
+go_to_read_data:
+    mov cl, al
+    jmp read_data
+
+
 ; print character buffer
 print_buffer:
-    lodsb; load character form edi into al
+    ; load character form edi into al
+    lodsb
 
     test al, al
     jz newline_call
@@ -302,6 +359,30 @@ print_buffer:
     jmp print_buffer
 
 
+write_to_floppy:
+    ; set the floppy mode to write
+    mov ah, 03h
+    mov al, 1
+
+    ; set the address of the first sector to write
+    mov ch, 21         
+    mov dh, 1        
+    mov cl, 13
+
+    mov bx, buffer
+
+    ; set the disk type to floppy
+    mov dl, 0
+    int 13h
+
+    mov al, '0'
+    add al, ah
+    mov ah, 0eh
+    int 10h
+
+    ret
+
+
 ; move cursor to the beginning of the new line
 newline:
     call find_current_cursor_position
@@ -316,6 +397,8 @@ newline:
 
 newline_call:
     call newline
+    call write_to_floppy
+
     jmp _start
 
 
