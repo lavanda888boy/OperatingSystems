@@ -18,6 +18,9 @@ section .data
     sector_prompt dd "Sector: "
     sector_prompt_length equ 8
 
+    input_data dd "Data: "
+    input_data_length equ 6
+
 section .bss
     buffer resb 255
 
@@ -77,7 +80,75 @@ read_number_of_operations:
 	mov ax, 1301h
 	int 10h    
 
-    mov di, 1
+    inc di
+    jmp read_buffer
+
+
+read_head:
+    call find_current_cursor_position
+
+    ; read the head address
+    mov ax, 0h
+	mov es, ax
+	mov bl, 07h
+	mov cx, head_prompt_length
+	mov bp, head_prompt
+
+	mov ax, 1301h
+	int 10h    
+
+    inc di
+    jmp read_buffer
+
+
+read_track:
+    call find_current_cursor_position
+
+    ; read the track address
+    mov ax, 0h
+	mov es, ax
+	mov bl, 07h
+	mov cx, track_prompt_length
+	mov bp, track_prompt
+
+	mov ax, 1301h
+	int 10h    
+
+    inc di
+    jmp read_buffer
+
+
+read_sector:
+    call find_current_cursor_position
+
+    ; read the sector address
+    mov ax, 0h
+	mov es, ax
+	mov bl, 07h
+	mov cx, sector_prompt_length
+	mov bp, sector_prompt
+
+	mov ax, 1301h
+	int 10h    
+
+    inc di
+    jmp read_buffer
+
+
+read_data:
+    call find_current_cursor_position
+
+    ; read the data
+    mov ax, 0h
+	mov es, ax
+	mov bl, 07h
+	mov cx, input_data_length
+	mov bp, input_data
+
+	mov ax, 1301h
+	int 10h    
+
+    inc di
     jmp read_buffer
 
 
@@ -121,8 +192,8 @@ handle_enter:
     mov si, buffer
 
     ; check if the input is a number and should be converted
-    cmp di, 1
-    je convert_input
+    cmp di, 0
+    jne convert_input
 
     call newline
 
@@ -188,9 +259,26 @@ convert_input:
         add ax, dx
 
         cmp byte [si], 0
-        je  end
+        je next_prompt
 
         jmp convert_digit   
+
+
+; select the next prompt to print
+next_prompt:
+    cmp di, 1
+    je read_head
+
+    cmp di, 2
+    je read_track
+
+    cmp di, 3
+    je read_sector
+
+    cmp di, 4
+    je read_data
+
+    jmp end
 
 
 ; print character buffer
