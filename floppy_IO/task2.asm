@@ -224,7 +224,7 @@ read_buffer:
 ; handle ENTER key behavior
 handle_enter:
     cmp byte [char_counter], 0
-    je newline_call
+    je newline_simple_call
 
     ; clear the character buffer 
     mov byte [si], 0
@@ -335,6 +335,8 @@ next_prompt:
     cmp byte [index], 4
     je go_to_read_data
 
+    call newline
+
     cmp byte [index], 5
     je print_buffer
 
@@ -403,10 +405,13 @@ write_to_floppy:
     mov dl, 0
     int 13h
 
+    ; print error code
     mov al, '0'
     add al, ah
     mov ah, 0eh
     int 10h
+
+    call newline
 
     dec byte [repetitions]
     inc byte [sector]
@@ -431,7 +436,19 @@ newline:
 
 newline_call:
     call newline
+
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
+    inc si
+
     jmp write_to_floppy
+
+
+newline_simple_call:
+    call newline
+    call newline
+    jmp _start
 
 
 find_current_cursor_position:
