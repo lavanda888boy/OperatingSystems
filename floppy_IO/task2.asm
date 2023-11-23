@@ -21,11 +21,22 @@ section .data
     input_data dd "Data: "
     input_data_length equ 6
 
+    segment_prompt dd "Segment: "
+    segment_prompt_length equ 9
+
+    offset_prompt dd "Offset: "
+    offset_prompt_length equ 8
+
     index db 0
+    adress_marker db 0
 
     result db 0
+    hex_result dd 0
 
     repetitions db 0
+
+    segment dd 0
+    offset dd 0
 
     head db 0
     track db 0
@@ -40,6 +51,9 @@ section .text
 _start:
     ; reset the marker for the handle_enter procedure
     mov byte [index], 0
+
+    ; reset marker for reading memory address
+    mov byte [adress_marker], 0
 
     call display_command_list
 
@@ -56,7 +70,17 @@ _start:
     mov byte [char_counter], 0
 
     call newline
-    jmp read_number_of_operations
+
+    cmp al, '1'
+    je read_number_of_operations
+
+    cmp al, '2'
+    je read_segment
+
+    cmp al, '3'
+    je read_segment
+
+    jmp newline_simple_call
 
 
 display_command_list:
@@ -92,6 +116,53 @@ read_number_of_operations:
     mov si, buffer
 
     inc byte [index]
+    inc byte [adress_marker]
+    jmp read_buffer
+
+
+read_segment:
+    mov si, buffer
+    mov byte [char_counter], 0
+
+    call find_current_cursor_position
+
+    mov ax, 0h
+	mov es, ax
+	mov bl, 07h
+	mov cx, segment_prompt_length
+	mov bp, segment_prompt
+
+	mov ax, 1301h
+	int 10h
+
+    mov byte [si], 0
+    mov si, buffer
+
+    inc byte [adress_marker]
+
+    jmp read_buffer
+
+
+read_offset:
+    mov si, buffer
+    mov byte [char_counter], 0
+
+    call find_current_cursor_position
+
+    mov ax, 0h
+	mov es, ax
+	mov bl, 07h
+	mov cx, offset_prompt_length
+	mov bp, offset_prompt
+
+	mov ax, 1301h
+	int 10h
+
+    mov byte [si], 0
+    mov si, buffer
+
+    inc byte [adress_marker]
+
     jmp read_buffer
 
 
@@ -230,18 +301,32 @@ handle_enter:
     mov byte [si], 0
     mov si, buffer
 
-    ; check if the input is a number and should be converted
+    ; check if the memory address was introduced and it should be converted
+    cmp byte [adress_marker], 1
+    je convert_input_hex
+
+    cmp byte [adress_marker], 2
+    je convert_input_hex
+
+    ; check if the input is a number and it should be converted
+    cmp byte [adress_marker], 0
+    jne check_direction
+
+    check_direction:
+        cmp byte [index], 0
+        je convert_input_int
+
     cmp byte [index], 1
-    je convert_input
+    je convert_input_int
 
     cmp byte [index], 2
-    je convert_input
+    je convert_input_int
 
     cmp byte [index], 3
-    je convert_input
+    je convert_input_int
 
     cmp byte [index], 4
-    je convert_input
+    je convert_input_int
 
     cmp byte [index], 5
     je next_prompt
@@ -299,7 +384,7 @@ handle_backspace:
 
 
 ; convert string into an integer
-convert_input:
+convert_input_int:
     xor ax, ax
     xor bx, bx
 
@@ -319,9 +404,36 @@ convert_input:
     jmp next_prompt
 
 
+; convert string into a hex
+convert_input_hex:
+    xor ax, ax
+    xor bx, bx
+
+    convert_symbol:
+        lodsb
+
+        sub al, '0'
+        xor bh, bh
+        shl bx, 4
+        add bl, al
+        mov [hex_result], bl
+
+        dec byte [char_counter]
+        cmp byte [char_counter], 0
+        jne convert_symbol
+
+    jmp next_prompt
+
+
 ; select the next prompt to print
 next_prompt:
     call newline
+
+    cmp byte [adress_marker], 1
+    je go_to_read_offset
+
+    cmp byte [adress_marker], 2
+    je go_to_read_number_of_operations
 
     cmp byte [index], 1
     je go_to_read_head
@@ -341,6 +453,18 @@ next_prompt:
     je print_buffer
 
     jmp end
+
+
+go_to_read_offset:
+    mov al, [hex_result]
+    mov [segment], al
+    jmp read_offset
+
+
+go_to_read_number_of_operations:
+    mov al, [hex_result]
+    mov [offset], al
+    jmp read_number_of_operations
 
 
 go_to_read_head:
@@ -422,6 +546,10 @@ write_to_floppy:
     jmp _start
 
 
+read_from_floppy:
+    
+
+
 ; move cursor to the beginning of the new line
 newline:
     call find_current_cursor_position
@@ -436,6 +564,9 @@ newline:
 
 newline_call:
     call newline
+
+    cmp byte [adress_marker], 0
+    je _start
 
     ; clear the character buffer 
     mov byte [si], 0
