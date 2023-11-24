@@ -9,7 +9,7 @@ mov bx, 1000h
 
 ; load the NASM script into memory
 mov ah, 02h
-mov al, 2
+mov al, 3
 mov ch, 0
 mov cl, 2   
 mov dh, 0

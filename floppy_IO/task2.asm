@@ -31,12 +31,12 @@ section .data
     adress_marker db 0
 
     result db 0
-    hex_result dd 0
+    hex_result db 0
+
+    adress_1 db 0
+    adress_2 db 0
 
     repetitions db 0
-
-    segment dd 0
-    offset dd 0
 
     head db 0
     track db 0
@@ -116,7 +116,6 @@ read_number_of_operations:
     mov si, buffer
 
     inc byte [index]
-    inc byte [adress_marker]
     jmp read_buffer
 
 
@@ -306,30 +305,26 @@ handle_enter:
     je convert_input_hex
 
     cmp byte [adress_marker], 2
-    je convert_input_hex
-
-    ; check if the input is a number and it should be converted
-    cmp byte [adress_marker], 0
-    jne check_direction
+    je check_direction
 
     check_direction:
         cmp byte [index], 0
+        je convert_input_hex
+
+        cmp byte [index], 1
         je convert_input_int
 
-    cmp byte [index], 1
-    je convert_input_int
+        cmp byte [index], 2
+        je convert_input_int
 
-    cmp byte [index], 2
-    je convert_input_int
+        cmp byte [index], 3
+        je convert_input_int
 
-    cmp byte [index], 3
-    je convert_input_int
+        cmp byte [index], 4
+        je convert_input_int
 
-    cmp byte [index], 4
-    je convert_input_int
-
-    cmp byte [index], 5
-    je next_prompt
+        cmp byte [index], 5
+        je next_prompt
 
     call newline
 
@@ -407,20 +402,35 @@ convert_input_int:
 ; convert string into a hex
 convert_input_hex:
     xor ax, ax
-    xor bx, bx
+    xor cx, cx
 
     convert_symbol:
         lodsb
 
-        sub al, '0'
-        xor bh, bh
-        shl bx, 4
-        add bl, al
-        mov [hex_result], bl
+        sub al, 30h
+
+        cmp al, 9h
+        jg process_letter
+        jmp continue
+
+        process_letter:
+            sub al, 7h
+            jmp continue
+
+        continue:
+            rol al, 4
+            add ch, al
+            ;add ch, al
 
         dec byte [char_counter]
         cmp byte [char_counter], 0
         jne convert_symbol
+
+    call newline
+    ;mov [hex_result], ch
+    mov ah, 0eh
+    mov al, ch
+    int 10h
 
     jmp next_prompt
 
@@ -433,37 +443,44 @@ next_prompt:
     je go_to_read_offset
 
     cmp byte [adress_marker], 2
-    je go_to_read_number_of_operations
+    je check_another_direction
 
-    cmp byte [index], 1
-    je go_to_read_head
+    check_another_direction:
+        cmp byte [index], 0
+        je go_to_read_number_of_operations
 
-    cmp byte [index], 2
-    je go_to_read_track
+        cmp byte [index], 1
+        je go_to_read_head
 
-    cmp byte [index], 3
-    je go_to_read_sector
+        cmp byte [index], 2
+        je go_to_read_track
 
-    cmp byte [index], 4
-    je go_to_read_data
+        cmp byte [index], 3
+        je go_to_read_sector
 
-    call newline
+        cmp byte [adress_marker], 0
+        jne read_from_floppy
 
-    cmp byte [index], 5
-    je print_buffer
+        cmp byte [index], 4
+        je go_to_read_data
+
+        call newline
+
+        cmp byte [index], 5
+        je print_buffer
 
     jmp end
 
 
 go_to_read_offset:
-    mov al, [hex_result]
-    mov [segment], al
+    mov ax, [hex_result]
+    mov [adress_1], ax
     jmp read_offset
 
 
 go_to_read_number_of_operations:
-    mov al, [hex_result]
-    mov [offset], al
+    mov ax, [hex_result]
+    mov [adress_2], ax
     jmp read_number_of_operations
 
 
@@ -547,7 +564,49 @@ write_to_floppy:
 
 
 read_from_floppy:
-    
+    ; clear the character buffer 
+    mov byte [si], 0
+    mov si, buffer
+
+    ; set the floppy mode to read
+    mov ah, 02h
+    mov al, [repetitions]
+
+    mov dh, [head]
+    mov ch, [track]
+    mov cl, [sector]
+
+    mov dl, 0    
+    mov ax, [adress_1]
+    mov es, ax
+    mov bx, [adress_2]
+
+    int 13h
+
+    call newline
+
+    ; print error code
+    mov al, '0'
+    add al, ah
+    mov ah, 0eh
+    int 10h
+
+    call newline
+    call newline
+
+    ; ; print data from the floppy
+    ; call find_current_cursor_position
+
+    ; mov ax, [adress_1]
+	; mov es, ax
+	; mov bl, 07h
+	; mov cx, [adress_2]
+	; mov bp, [adress_2]
+
+	; mov ax, 1301h
+	; int 10h   
+
+    jmp _start
 
 
 ; move cursor to the beginning of the new line
@@ -564,9 +623,6 @@ newline:
 
 newline_call:
     call newline
-
-    cmp byte [adress_marker], 0
-    je _start
 
     ; clear the character buffer 
     mov byte [si], 0
