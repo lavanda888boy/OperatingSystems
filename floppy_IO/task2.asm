@@ -27,6 +27,8 @@ section .data
     offset_prompt dd "Offset: "
     offset_prompt_length equ 8
 
+    page_number db 0
+
     index db 0
     adress_marker db 0
 
@@ -87,6 +89,7 @@ display_command_list:
 
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, prompt_length
 	mov bp, prompt
@@ -98,27 +101,43 @@ display_command_list:
 
 
 read_number_of_operations:
-    call find_current_cursor_position
+    cmp byte [adress_marker], 0
+    je increment_page
+    jmp continue_read
 
-    ; read the number of write operations
-    mov ax, 0h
-	mov es, ax
-	mov bl, 07h
-	mov cx, write_count_prompt_length
-	mov bp, write_count_prompt
+    increment_page:
+        call change_page_number
+        jmp continue_read
 
-	mov ax, 1301h
-	int 10h    
+    continue_read:
+        call find_current_cursor_position
 
-    ; clear the character buffer 
-    mov byte [si], 0
-    mov si, buffer
+        ; read the number of write operations
+        mov ax, 0h
+        mov es, ax
+        mov bh, [page_number]
+        mov bl, 07h
+        mov cx, write_count_prompt_length
+        mov bp, write_count_prompt
 
-    inc byte [index]
-    jmp read_buffer
+        mov ax, 1301h
+        int 10h    
+
+        ; clear the character buffer 
+        mov byte [si], 0
+        mov si, buffer
+
+        inc byte [index]
+        jmp read_buffer
 
 
 read_segment:
+    ; change page
+    inc byte [page_number]
+    mov ah, 05h
+    mov al, [page_number]
+    int 10h
+
     mov si, buffer
     mov byte [char_counter], 0
 
@@ -126,6 +145,7 @@ read_segment:
 
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, segment_prompt_length
 	mov bp, segment_prompt
@@ -149,6 +169,7 @@ read_offset:
 
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, offset_prompt_length
 	mov bp, offset_prompt
@@ -173,6 +194,7 @@ read_head:
     ; read the head address
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, head_prompt_length
 	mov bp, head_prompt
@@ -197,6 +219,7 @@ read_track:
     ; read the track address
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, track_prompt_length
 	mov bp, track_prompt
@@ -221,6 +244,7 @@ read_sector:
     ; read the sector address
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, sector_prompt_length
 	mov bp, sector_prompt
@@ -245,6 +269,7 @@ read_data:
     ; read the data
     mov ax, 0h
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, input_data_length
 	mov bp, input_data
@@ -351,6 +376,7 @@ handle_backspace:
         call find_current_cursor_position
 
         mov ah, 02h
+        mov bh, [page_number]
         dec dh
         mov dl, 80
         int 10h
@@ -364,13 +390,14 @@ handle_backspace:
 
         ; move cursor to the left
         mov ah, 02h
+        mov bh, [page_number]
         dec dl
         int 10h
 
         ; print space instead of the cleared char
         mov ah, 0ah
         mov al, ' '
-        mov bh, 0x00
+        mov bh, [page_number]
         mov cx, 1
         int 10h
 
@@ -513,12 +540,13 @@ print_buffer:
 
     ; display character
     mov ah, 0ah
-    mov bh, 0x00
+    mov bh, [page_number]
     mov cx, 1
     int 10h
 
     ; move cursor
     mov ah, 02h
+    mov bh, [page_number]
     inc dl
     int 10h
 
@@ -592,6 +620,7 @@ read_from_floppy:
 
     mov ax, [adress_1]
 	mov es, ax
+    mov bh, [page_number]
 	mov bl, 07h
 	mov cx, 10
 	mov bp, [adress_2]
@@ -609,6 +638,7 @@ newline:
     call find_current_cursor_position
 
     mov ah, 02h
+    mov bh, [page_number]
     inc dh
     mov dl, 0
     int 10h
@@ -633,9 +663,18 @@ newline_simple_call:
     jmp _start
 
 
+change_page_number:
+    inc byte [page_number]
+    mov ah, 05h
+    mov al, [page_number]
+    int 10h
+
+    ret
+
+
 find_current_cursor_position:
     mov ah, 03h
-    mov bh, 0x00
+    mov bh, [page_number]
     int 10h
 
     ret
