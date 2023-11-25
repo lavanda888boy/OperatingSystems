@@ -31,10 +31,6 @@ section .data
     adress_marker db 0
 
     result db 0
-    hex_result db 0
-
-    adress_1 db 0
-    adress_2 db 0
 
     repetitions db 0
 
@@ -44,6 +40,9 @@ section .data
 
 section .bss
     buffer resb 255
+    hex_result resb 2
+    adress_1 resb 2
+    adress_2 resb 2
 
 section .text
     global _start
@@ -401,36 +400,32 @@ convert_input_int:
 
 ; convert string into a hex
 convert_input_hex:
-    xor ax, ax
-    xor cx, cx
+    xor bx, bx
+    mov di, hex_result
 
     convert_symbol:
-        lodsb
+        xor ax, ax
+        mov al, [si]
 
-        sub al, 30h
-
-        cmp al, 9h
+        cmp al, 65
         jg process_letter
+        sub al, 48
         jmp continue
 
         process_letter:
-            sub al, 7h
+            sub al, 55
             jmp continue
 
         continue:
-            rol al, 4
-            add ch, al
-            ;add ch, al
+            mov bx, [di]
+            imul bx, 16
+            add bx, ax
+            mov [di], bx
 
+            inc si
+            
         dec byte [char_counter]
-        cmp byte [char_counter], 0
-        jne convert_symbol
-
-    call newline
-    ;mov [hex_result], ch
-    mov ah, 0eh
-    mov al, ch
-    int 10h
+        jnz convert_symbol
 
     jmp next_prompt
 
@@ -504,7 +499,7 @@ go_to_read_sector:
 
 go_to_read_data:
     mov al, [result]
-    mov byte [sector], al
+    mov [sector], al
     jmp read_data
 
 
@@ -564,9 +559,12 @@ write_to_floppy:
 
 
 read_from_floppy:
-    ; clear the character buffer 
-    mov byte [si], 0
-    mov si, buffer
+    mov al, [result]
+    mov [sector], al
+
+    mov ax, [adress_1]  
+    mov es, ax
+    mov bx, [adress_2]
 
     ; set the floppy mode to read
     mov ah, 02h
@@ -576,14 +574,9 @@ read_from_floppy:
     mov ch, [track]
     mov cl, [sector]
 
-    mov dl, 0    
-    mov ax, [adress_1]
-    mov es, ax
-    mov bx, [adress_2]
+    mov dl, 0 
 
     int 13h
-
-    call newline
 
     ; print error code
     mov al, '0'
@@ -594,18 +587,20 @@ read_from_floppy:
     call newline
     call newline
 
-    ; ; print data from the floppy
-    ; call find_current_cursor_position
+    ; print data from the floppy
+    call find_current_cursor_position
 
-    ; mov ax, [adress_1]
-	; mov es, ax
-	; mov bl, 07h
-	; mov cx, [adress_2]
-	; mov bp, [adress_2]
+    mov ax, [adress_1]
+	mov es, ax
+	mov bl, 07h
+	mov cx, 10
+	mov bp, [adress_2]
 
-	; mov ax, 1301h
-	; int 10h   
+	mov ax, 1301h
+	int 10h   
 
+    call newline
+    call newline
     jmp _start
 
 
