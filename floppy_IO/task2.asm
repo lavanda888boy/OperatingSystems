@@ -3,7 +3,7 @@ org 1000h
 section .data
     char_counter db 0
 
-    prompt dd "Choose the command (1-keyboard/floppy, 2-ram/floppy, 3-floppy/ram): "
+    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy): "
     prompt_length equ 68
 
     write_count_prompt dd "N or Q: "
@@ -36,6 +36,8 @@ section .data
     result db 0
 
     repetitions db 0
+
+    num_of_sectors db 0
 
     head db 0
     track db 0
@@ -614,6 +616,8 @@ write_to_floppy:
     mov dl, 0
     int 13h
 
+    inc dh
+
     ; print error code
     mov al, '0'
     add al, ah
@@ -654,18 +658,20 @@ write_to_floppy_ram:
     div bx
 
     ; set the floppy mode to write
-    inc ah
-    mov al, ah
+    inc al
+    mov [num_of_sectors], al
+
+    mov ax, [adress_1]
+    mov es, ax
+    mov bx, [adress_2]
+
     mov ah, 03h
+    mov al, [num_of_sectors]
 
     ; set the address of the first sector to write         
     mov dh, [head] 
     mov ch, [track]     
     mov cl, [sector]
-
-    mov ax, [adress_1]
-    mov es, ax
-    mov bx, [adress_2]
 
     ; set the disk type to floppy
     mov dl, 0
@@ -717,7 +723,7 @@ read_from_floppy:
 	mov es, ax
     mov bh, [page_number]
 	mov bl, 07h
-	mov cx, 10
+	mov cx, 1024
 	mov bp, [adress_2]
 
 	mov ax, 1301h
