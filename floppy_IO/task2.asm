@@ -31,6 +31,7 @@ section .data
 
     index db 0
     adress_marker db 0
+    ram_marker db 0
 
     result db 0
 
@@ -45,16 +46,23 @@ section .bss
     hex_result resb 2
     adress_1 resb 2
     adress_2 resb 2
+    memory_bytes resb 2
 
 section .text
     global _start
 
 _start:
+    mov ah, 00h
+    int 13h
+
     ; reset the marker for the handle_enter procedure
     mov byte [index], 0
 
     ; reset marker for reading memory address
     mov byte [adress_marker], 0
+
+    ; reset marker for ram operations
+    mov byte [ram_marker], 0
 
     call display_command_list
 
@@ -79,9 +87,14 @@ _start:
     je read_segment
 
     cmp al, '3'
-    je read_segment
+    je increment_ram_marker
 
     jmp newline_simple_call
+
+
+increment_ram_marker:
+    inc byte [ram_marker]
+    jmp read_segment
 
 
 display_command_list:
@@ -336,7 +349,7 @@ handle_enter:
         je convert_input_hex
 
         cmp byte [index], 1
-        je convert_input_int
+        je choose_conversion_size
 
         cmp byte [index], 2
         je convert_input_int
@@ -353,6 +366,12 @@ handle_enter:
     call newline
 
     jmp print_buffer
+
+
+choose_conversion_size:
+    cmp byte [ram_marker], 0
+    je convert_input_int
+    jmp convert_large_int
 
 
 ; handle BACKSPACE key behavior
@@ -425,6 +444,26 @@ convert_input_int:
     jmp next_prompt
 
 
+convert_large_int:
+    xor ax, ax
+    xor bx, bx
+
+    convert_large_digit:
+        lodsb
+
+        sub al, '0'
+        xor bh, bh
+        imul bx, 10
+        add bx, ax
+        mov [memory_bytes], bx
+
+        dec byte [char_counter]
+        cmp byte [char_counter], 0
+        jne convert_large_digit
+
+    jmp next_prompt
+
+
 ; convert string into a hex
 convert_input_hex:
     xor bx, bx
@@ -481,7 +520,7 @@ next_prompt:
         je go_to_read_sector
 
         cmp byte [adress_marker], 0
-        jne read_from_floppy
+        jne choose_ram_operation
 
         cmp byte [index], 4
         je go_to_read_data
@@ -492,6 +531,12 @@ next_prompt:
         je print_buffer
 
     jmp end
+
+
+choose_ram_operation:
+    cmp byte [ram_marker], 0
+    je read_from_floppy
+    jmp write_to_floppy_ram
 
 
 go_to_read_offset:
@@ -581,6 +626,56 @@ write_to_floppy:
     inc byte [sector]
     cmp byte [repetitions], 0
     jne write_to_floppy
+
+    call newline
+    jmp _start
+
+
+write_to_floppy_ram:
+    ; print data to write
+    call find_current_cursor_position
+
+    mov es, [adress_1]
+    mov bh, [page_number]
+	mov bl, 07h
+	mov cx, [memory_bytes]
+	mov bp, [adress_2]
+
+	mov ax, 1301h
+	int 10h   
+
+    call newline
+    call newline
+
+    ; find number of sectors to write
+    xor dx, dx
+    mov ax, [memory_bytes]
+    mov bx, 512
+    div bx
+
+    ; set the floppy mode to write
+    inc ah
+    mov al, ah
+    mov ah, 03h
+
+    ; set the address of the first sector to write         
+    mov dh, [head] 
+    mov ch, [track]     
+    mov cl, [sector]
+
+    mov ax, [adress_1]
+    mov es, ax
+    mov bx, [adress_2]
+
+    ; set the disk type to floppy
+    mov dl, 0
+    int 13h
+
+    ; print error code
+    mov al, '0'
+    add al, ah
+    mov ah, 0eh
+    int 10h
 
     call newline
     jmp _start
