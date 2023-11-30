@@ -66,7 +66,6 @@ _start:
     ; reset marker for ram operations
     mov byte [ram_marker], 0
 
-    call newline
     call display_command_list
 
     ; read command option
