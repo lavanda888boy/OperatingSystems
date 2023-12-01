@@ -4,51 +4,208 @@ section .text
     global _start
 
 _start:
+    ; set text video mode
+    mov ah, 00h 
+    mov al, 2
+    int 10h  
+
+    ; print command disclaimer
+    mov si, disclaimer
+    call print_string
+    call newline
+
+    ; input stripe width
+    mov si, stripe_width_prompt
+    call print_string
+
+    mov byte [result], 0
+    call clear_buffer
+    call read_buffer
+
+    mov al, [result]
+    mov byte [stripe_width], al
+
+    call newline
+
+
+    ; input stripe height
+    mov si, stripe_height_prompt
+    call print_string
+
+    mov byte [result], 0
+    call clear_buffer
+    call read_buffer
+
+    mov al, [result]
+    mov byte [stripe_height], al
+
+    call newline
+
+
+    ; input stripe indent
+    mov si, stripe_indent_prompt
+    call print_string
+
+    mov byte [result], 0
+    call clear_buffer
+    call read_buffer
+
+    mov al, [result]
+    mov byte [stripe_indent], al
+
+    call newline
+
+    call draw_rainbow
+    jmp end
+
+
+read_buffer:
+
+    read_char:
+        ; read character
+        mov ah, 00h
+        int 16h
+
+        ; check if the ENTER key was introduced
+        cmp al, 0dh
+        je handle_enter
+
+        ; check if the BACKSPACE key was introduced
+        cmp al, 08h
+        je handle_backspace
+
+        ; add character into the buffer and increment its pointer
+        mov [si], al
+        inc si
+        inc byte [char_counter]
+
+        ; display character as TTY
+        mov ah, 0eh
+        mov bl, 07h
+        int 10h
+
+        jmp read_char
+    
+    handle_enter:
+        mov byte [si], 0
+        mov si, buffer
+        call convert_input_int
+        jmp end_read_buffer
+
+    handle_backspace:
+        call find_current_cursor_position
+
+        cmp byte [char_counter], 0
+        je read_char
+
+        ; clear last buffer char 
+        dec si
+        dec byte [char_counter]
+
+        ; move cursor to the left
+        mov ah, 02h
+        mov bh, 0
+        dec dl
+        int 10h
+
+        ; print space instead of the cleared char
+        mov ah, 0ah
+        mov al, ' '
+        mov bh, 0
+        mov cx, 1
+        int 10h
+
+        jmp read_char
+
+    end_read_buffer:
+
+    ret
+
+
+clear_buffer:
+    mov byte [char_counter], 0
+    mov byte [si], 0
+    mov si, buffer
+
+    ret
+
+
+print_string:
+    call find_current_cursor_position
+    
+    print_char:
+        mov al, [si]
+        cmp al, '$'
+        je end_print_string
+
+        mov ah, 0eh
+        int 10h
+        inc si
+        jmp print_char
+
+    end_print_string: 
+        ret  
+
+
+draw_rainbow:
     ; set graphic video mode
     mov ah, 00h 
     mov al, [video_mode]
     int 10h  
 
     ; red stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 4
     call draw_stripe
 
     ; orange stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 12
     call draw_stripe
 
     ; yellow stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 14
     call draw_stripe
 
     ; green stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 10
     call draw_stripe
 
     ; light blue stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 9
     call draw_stripe
 
     ; dark blue stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 1
     call draw_stripe
 
     ; violet stripe
-    mov byte [stripes], 10
+    mov al, byte [stripe_height]
+    mov byte [stripes], al
     mov byte [pixel_color], 5
     call draw_stripe
+    
+    ret
 
 
 draw_stripe:
 
     stripe_loop:
-        mov byte [line_length], 240
+        mov al, byte [stripe_width]
+        mov byte [line_length], al
+
+        mov al, byte [stripe_indent]
+        mov byte [left_indent], al
         mov cx, [left_indent]
         call draw_line
 
@@ -81,13 +238,73 @@ draw_line:
     
     ret
 
+
+convert_input_int:
+    xor ax, ax
+    xor bx, bx
+
+    convert_digit:
+        lodsb
+
+        sub al, '0'
+        xor bh, bh
+        imul bx, 10
+        add bl, al
+        mov [result], bl
+
+        dec byte [char_counter]
+        cmp byte [char_counter], 0
+        jne convert_digit
+
+    ret
+
+
+find_current_cursor_position:
+    mov ah, 03h
+    mov bh, 0
+    int 10h
+
+    ret
+
+
 end:
 
 
+newline:
+    call find_current_cursor_position
+
+    mov ah, 02h
+    mov bh, 0
+    inc dh
+    mov dl, 0
+    int 10h
+
+    ret
+
+
 section .data
+    disclaimer db "Welcome to the rainbow command! Remember, the page has the size 320x200$"
+    stripe_width_prompt db "Stripe width: $"
+    stripe_indent_prompt db "Stripe indent: $"
+    stripe_height_prompt db "Stripe height: $"
+
     video_mode db 13
     pixel_color db 0
+
     line_length db 0
+    stripe_width db 0
+
     left_indent dw 10
+    stripe_indent dw 0
+
     line_number dw 10
+
     stripes db 0
+    stripe_height dw 0
+
+    char_counter db 0
+    result db 0
+
+
+section .bss
+    buffer resb 100
