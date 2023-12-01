@@ -550,60 +550,38 @@ print_buffer:
     jmp print_buffer
 
 
-; write_to_floppy:
-;     ; set the floppy mode to write
-;     mov ah, 03h
-;     mov al, 1
-
-;     ; set the address of the first sector to write         
-;     mov dh, [head] 
-;     mov ch, [track]     
-;     mov cl, [sector]
-
-;     mov bx, buffer
-
-;     ; set the disk type to floppy
-;     mov dl, 0
-;     int 13h
-
-;     inc dh
-
-;     ; print error code
-;     mov al, '0'
-;     add al, ah
-;     mov ah, 0eh
-;     int 10h
-
-;     call newline
-
-;     dec byte [repetitions]
-;     inc byte [sector]
-;     cmp byte [repetitions], 0
-;     jne write_to_floppy
-
-;     call newline
-;     jmp _start
-
-
 write_to_floppy:
+    xor di, di
+    xor si, si
+
+    ; repeat the string a certain number of times
     mov di, repeated_buffer
-    mov bx, [repetitions]
     jmp write_buffer
 
     write_buffer:
         mov si, buffer
-        mov cx, [char_counter]
+        movzx cx, byte [char_counter]
         rep movsb
 
-        add di, [char_counter]
-
-        dec bx
-        cmp bx, 0
+        dec byte [repetitions]
+        cmp byte [repetitions], 0
         jg write_buffer
+
+    ; find the number of sectors to write
+    mov al, byte [char_counter]
+    mov bl, byte [repetitions]
+    imul ax, bx
+
+    xor dx, dx
+    mov bx, 512
+    div bx
+
+    mov byte [repetitions], al
+    inc byte [repetitions]
 
     ; set the floppy mode to write
     mov ah, 03h
-    mov al, 1
+    mov al, byte [repetitions]
 
     ; set the address of the first sector to write         
     mov dh, [head] 
@@ -710,16 +688,6 @@ read_from_floppy:
     call newline
 
     ; print data from the floppy
-    ; find the number of pages to print
-    mov ax, [repetitions]
-    imul ax, 512
-
-    xor dx, dx
-    mov cx, 1500    
-    div cx
-    mov [num_pages], ax
-    add word [num_pages], 1
-
     call pagination_loop
 
     call newline
@@ -737,7 +705,7 @@ pagination_loop:
         mov es, ax
         mov bh, [page_number]
         mov bl, 07h
-        mov cx, 1500
+        mov cx, 512
         mov bp, [adress_2]
 
         mov ax, 1301h
@@ -751,15 +719,12 @@ pagination_loop:
             cmp al, 20h
             jne change_page
 
-            add word [adress_2], 1500
+            add word [adress_2], 512
             call change_page_number
 
-            sub word [num_pages], 1
-            cmp word [num_pages], 0
+            dec byte [repetitions]
+            cmp byte [repetitions], 0
             jne print_page
-            jmp end_print_page
-
-    end_print_page:
     
     ret 
 
@@ -867,6 +832,5 @@ section .bss
     adress_1 resb 2
     adress_2 resb 2
     memory_bytes resb 2
-    num_pages resb 2
 
     repeated_buffer resb 255
