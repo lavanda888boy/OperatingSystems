@@ -49,6 +49,7 @@ section .bss
     adress_1 resb 2
     adress_2 resb 2
     memory_bytes resb 2
+    num_pages resb 2
 
 section .text
     global _start
@@ -717,21 +718,58 @@ read_from_floppy:
     call newline
 
     ; print data from the floppy
-    call find_current_cursor_position
+    ; find the number of pages to print
+    mov ax, [repetitions]
+    imul ax, 512
 
-    mov ax, [adress_1]
-	mov es, ax
-    mov bh, [page_number]
-	mov bl, 07h
-	mov cx, 1024
-	mov bp, [adress_2]
+    xor dx, dx
+    mov cx, 1500    
+    div cx
+    mov [num_pages], ax
+    add word [num_pages], 1
 
-	mov ax, 1301h
-	int 10h   
+    call pagination_loop
 
     call newline
     call newline
     jmp _start
+
+
+pagination_loop:
+    call change_page_number
+
+    print_page:
+        call find_current_cursor_position
+
+        mov ax, [adress_1]
+        mov es, ax
+        mov bh, [page_number]
+        mov bl, 07h
+        mov cx, 1500
+        mov bp, [adress_2]
+
+        mov ax, 1301h
+        int 10h 
+
+        change_page:
+            ; change the page by pressing SPACE
+            mov ah, 00h
+            int 16h
+
+            cmp al, 20h
+            jne change_page
+
+            add word [adress_2], 1500
+            call change_page_number
+
+            sub word [num_pages], 1
+            cmp word [num_pages], 0
+            jne print_page
+            jmp end_print_page
+
+    end_print_page:
+    
+    ret 
 
 
 ; move cursor to the beginning of the new line
@@ -754,6 +792,9 @@ newline_call:
     mov byte [si], 0
     mov si, buffer
     inc si
+
+    call newline
+    call newline
 
     jmp write_to_floppy
 
