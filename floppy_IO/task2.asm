@@ -595,6 +595,8 @@ write_to_floppy:
         mov cx, [char_counter]
         rep movsb
 
+        add di, [char_counter]
+
         dec bx
         cmp bx, 0
         jg write_buffer
