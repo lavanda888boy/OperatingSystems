@@ -1,56 +1,5 @@
 org 1000h
 
-section .data
-    char_counter db 0
-
-    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy): "
-    prompt_length equ 68
-
-    write_count_prompt dd "N or Q: "
-    write_count_prompt_length equ 8
-
-    head_prompt dd "Head: "
-    head_prompt_length equ 6
-
-    track_prompt dd "Track: "
-    track_prompt_length equ 7
-
-    sector_prompt dd "Sector: "
-    sector_prompt_length equ 8
-
-    input_data dd "Data: "
-    input_data_length equ 6
-
-    segment_prompt dd "Segment: "
-    segment_prompt_length equ 9
-
-    offset_prompt dd "Offset: "
-    offset_prompt_length equ 8
-
-    page_number db 0
-
-    index db 0
-    adress_marker db 0
-    ram_marker db 0
-
-    result db 0
-
-    repetitions db 0
-
-    num_of_sectors db 0
-
-    head db 0
-    track db 0
-    sector db 0
-
-section .bss
-    buffer resb 255
-    hex_result resb 2
-    adress_1 resb 2
-    adress_2 resb 2
-    memory_bytes resb 2
-    num_pages resb 2
-
 section .text
     global _start
 
@@ -601,7 +550,55 @@ print_buffer:
     jmp print_buffer
 
 
+; write_to_floppy:
+;     ; set the floppy mode to write
+;     mov ah, 03h
+;     mov al, 1
+
+;     ; set the address of the first sector to write         
+;     mov dh, [head] 
+;     mov ch, [track]     
+;     mov cl, [sector]
+
+;     mov bx, buffer
+
+;     ; set the disk type to floppy
+;     mov dl, 0
+;     int 13h
+
+;     inc dh
+
+;     ; print error code
+;     mov al, '0'
+;     add al, ah
+;     mov ah, 0eh
+;     int 10h
+
+;     call newline
+
+;     dec byte [repetitions]
+;     inc byte [sector]
+;     cmp byte [repetitions], 0
+;     jne write_to_floppy
+
+;     call newline
+;     jmp _start
+
+
 write_to_floppy:
+    mov di, repeated_buffer
+    mov bx, [repetitions]
+    jmp write_buffer
+
+    write_buffer:
+        mov si, buffer
+        mov cx, [char_counter]
+        rep movsb
+
+        dec bx
+        cmp bx, 0
+        jg write_buffer
+
     ; set the floppy mode to write
     mov ah, 03h
     mov al, 1
@@ -611,7 +608,7 @@ write_to_floppy:
     mov ch, [track]     
     mov cl, [sector]
 
-    mov bx, buffer
+    mov bx, repeated_buffer
 
     ; set the disk type to floppy
     mov dl, 0
@@ -624,13 +621,6 @@ write_to_floppy:
     add al, ah
     mov ah, 0eh
     int 10h
-
-    call newline
-
-    dec byte [repetitions]
-    inc byte [sector]
-    cmp byte [repetitions], 0
-    jne write_to_floppy
 
     call newline
     jmp _start
@@ -824,3 +814,57 @@ find_current_cursor_position:
 
 end:
     call newline
+
+
+section .data
+    char_counter db 0
+
+    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy): "
+    prompt_length equ 68
+
+    write_count_prompt dd "N or Q: "
+    write_count_prompt_length equ 8
+
+    head_prompt dd "Head: "
+    head_prompt_length equ 6
+
+    track_prompt dd "Track: "
+    track_prompt_length equ 7
+
+    sector_prompt dd "Sector: "
+    sector_prompt_length equ 8
+
+    input_data dd "Data: "
+    input_data_length equ 6
+
+    segment_prompt dd "Segment: "
+    segment_prompt_length equ 9
+
+    offset_prompt dd "Offset: "
+    offset_prompt_length equ 8
+
+    page_number db 0
+
+    index db 0
+    adress_marker db 0
+    ram_marker db 0
+
+    result db 0
+
+    repetitions db 0
+
+    num_of_sectors db 0
+
+    head db 0
+    track db 0
+    sector db 0
+
+section .bss
+    buffer resb 255
+    hex_result resb 2
+    adress_1 resb 2
+    adress_2 resb 2
+    memory_bytes resb 2
+    num_pages resb 2
+
+    repeated_buffer resb 255
