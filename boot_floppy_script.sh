@@ -16,7 +16,7 @@ floppy_image="floppy.img"
 truncate -s 1474560 bootloader.bin
 mv bootloader.bin $floppy_image
 
-dd if="$binary_file" of="$floppy_image" bs=512 seek=1 conv=notrunc
+dd if="$binary_file" of="$floppy_image" bs=512 seek=2 conv=notrunc
 
 echo "Binary file '$binary_file' successfully added to floppy image '$floppy_image'."
 
