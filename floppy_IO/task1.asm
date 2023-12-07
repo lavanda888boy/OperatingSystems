@@ -5,10 +5,10 @@ section .data
     delimiter_length equ 31
     delimiter_count equ 10
     
-    first_sector equ 13
+    first_sector equ 14
     first_track equ 21
 
-    last_sector equ 6
+    last_sector equ 7
     last_track equ 23
 
 section .bss
