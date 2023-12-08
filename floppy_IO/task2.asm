@@ -1,11 +1,9 @@
+org 1000h
+
 section .text
     global _start
 
 _start:
-    ; receive segment:offset pair from the bootloader
-    mov [add1], ax
-    mov [add2], bx
-
     mov ah, 00h
     int 13h
 
@@ -46,11 +44,6 @@ _start:
     jmp newline_simple_call
 
 
-run_bootloader:
-    call newline
-    jmp 0000h:7c00h
-
-
 increment_ram_marker:
     inc byte [ram_marker]
     jmp read_segment
@@ -64,10 +57,7 @@ display_command_list:
     mov bh, [page_number]
 	mov bl, 07h
 	mov cx, prompt_length
-	
-    mov ax, prompt
-    add ax, [add1]
-    mov bp, ax
+	mov bp, prompt
 
 	mov ax, 1301h
 	int 10h
@@ -804,8 +794,8 @@ end:
 section .data
     char_counter db 0
 
-    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy, 4-reboot): "
-    prompt_length equ 78
+    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy): "
+    prompt_length equ 68
 
     write_count_prompt dd "N or Q: "
     write_count_prompt_length equ 8
@@ -852,8 +842,5 @@ section .bss
     adress_1 resb 2
     adress_2 resb 2
     memory_bytes resb 2
-
-    add1 resb 2
-    add2 resb 2
 
     repeated_buffer resb 255

@@ -4,19 +4,44 @@ section .text
     global _start
 
 _start:
+    mov byte [page], 0
+
+    ; receive segment:offset pair from the bootloader
+    mov [add1], ax
+    mov [add2], bx
+
     ; set text video mode
     mov ah, 00h 
     mov al, 2
     int 10h  
 
     ; print command disclaimer
-    mov si, disclaimer
-    call print_string
+    call find_current_cursor_position
+    
+    mov ax, 0h
+	mov es, ax
+    mov bh, [page]
+	mov bl, 07h
+    mov cx, disclaimer_length
+	mov bp, disclaimer
+
+	mov ax, 1301h
+	int 10h 
+
     call newline
 
     ; input stripe width
-    mov si, stripe_width_prompt
-    call print_string
+    call find_current_cursor_position
+    
+    mov ax, 0h
+	mov es, ax
+    mov bh, [page]
+	mov bl, 07h
+    mov cx, stripe_width_prompt_length
+	mov bp, stripe_width_prompt
+
+	mov ax, 1301h
+	int 10h 
 
     mov byte [result], 0
     call clear_buffer
@@ -27,10 +52,18 @@ _start:
 
     call newline
 
-
     ; input stripe height
-    mov si, stripe_height_prompt
-    call print_string
+    call find_current_cursor_position
+    
+    mov ax, 0h
+	mov es, ax
+    mov bh, [page]
+	mov bl, 07h
+    mov cx, stripe_height_prompt_length
+	mov bp, stripe_height_prompt
+
+	mov ax, 1301h
+	int 10h 
 
     mov byte [result], 0
     call clear_buffer
@@ -43,8 +76,17 @@ _start:
 
 
     ; input stripe indent
-    mov si, stripe_indent_prompt
-    call print_string
+    call find_current_cursor_position
+    
+    mov ax, 0h
+	mov es, ax
+    mov bh, [page]
+	mov bl, 07h
+    mov cx, stripe_indent_prompt_length
+	mov bp, stripe_indent_prompt
+
+	mov ax, 1301h
+	int 10h 
 
     mov byte [result], 0
     call clear_buffer
@@ -54,8 +96,15 @@ _start:
     mov byte [stripe_indent], al
 
     call newline
-
     call draw_rainbow
+
+    ; read character
+    mov ah, 00h
+    int 16h
+
+    call change_page_number
+    jmp _start
+    
     jmp end
 
 
@@ -128,23 +177,6 @@ clear_buffer:
     mov si, buffer
 
     ret
-
-
-print_string:
-    call find_current_cursor_position
-    
-    print_char:
-        mov al, [si]
-        cmp al, '$'
-        je end_print_string
-
-        mov ah, 0eh
-        int 10h
-        inc si
-        jmp print_char
-
-    end_print_string: 
-        ret  
 
 
 draw_rainbow:
@@ -224,6 +256,7 @@ draw_line:
 
     draw_pixel:
         mov ah, 0ch
+        mov bh, byte [page]
         mov al, [pixel_color]
         mov dx, [line_number]          
         int 10h
@@ -259,15 +292,21 @@ convert_input_int:
     ret
 
 
-find_current_cursor_position:
-    mov ah, 03h
-    mov bh, 0
+change_page_number:
+    inc byte [page]
+    mov ah, 05h
+    mov al, [page]
     int 10h
 
     ret
 
 
-end:
+find_current_cursor_position:
+    mov ah, 03h
+    mov bh, byte [page]
+    int 10h
+
+    ret
 
 
 newline:
@@ -281,12 +320,21 @@ newline:
 
     ret
 
+end:
+
 
 section .data
-    disclaimer db "Welcome to the rainbow command! Remember, the page has the size 320x200$"
-    stripe_width_prompt db "Stripe width: $"
-    stripe_indent_prompt db "Stripe indent: $"
-    stripe_height_prompt db "Stripe height: $"
+    disclaimer db "Welcome to the rainbow command! Remember, the page has the size 320x200!"
+    disclaimer_length equ 72
+
+    stripe_width_prompt db "Stripe width: "
+    stripe_width_prompt_length equ 14
+
+    stripe_indent_prompt db "Stripe indent: "
+    stripe_indent_prompt_length equ 15
+
+    stripe_height_prompt db "Stripe height: "
+    stripe_height_prompt_length equ 15
 
     video_mode db 13
     pixel_color db 0
@@ -305,6 +353,12 @@ section .data
     char_counter db 0
     result db 0
 
+    page db 0
+
+    c db 0
+
 
 section .bss
+    add1 resb 2
+    add2 resb 2
     buffer resb 100
