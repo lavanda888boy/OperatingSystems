@@ -1,7 +1,10 @@
 org 7d00h
 
-mov ah, 00
-int 13h
+mov byte [marker], 0
+
+; print initial prompt
+mov si, prompt
+call print
 
 mov ax, 0000h
 mov es, ax
@@ -86,6 +89,8 @@ mov byte [s], al
 call newline
 call newline
 
+inc byte [marker]
+
 ; print ram address prompt
 mov si, so_prompt
 call print
@@ -105,8 +110,7 @@ mov [add1], ax
 
 call newline
 
-
-; print track prompt
+; print offset prompt
 mov ah, 0eh
 mov al, '>'
 mov bl, 07h
@@ -140,18 +144,21 @@ call newline
 call newline
 
 ; remember segment and offset in ax:bx
+mov ax, [add1]
+mov bx, [add2]
 
 ; jump to the loaded NASM script
-jmp 0000h:1000h
+add ax, bx
+jmp ax
 
 
 load_kernel:
     mov ah, 0h
     int 13h
 
-    mov ax, 0000h
+    mov ax, [add2]
     mov es, ax
-    mov bx, 1000h
+    mov bx, [add1]
 
     ; load the NASM script into memory
     mov ah, 02h
@@ -204,8 +211,10 @@ read_buffer:
     hdl_enter:
         mov byte [si], 0
         mov si, buffer
-        call atoi
-        jmp end_read_buffer
+
+        cmp byte [marker], 0
+        je atoi_jump
+        jmp atoh_jump
 
     hdl_backspace:
         call cursor
@@ -231,6 +240,14 @@ read_buffer:
         int 10h
 
         jmp read_char
+    
+    atoi_jump:
+        call atoi
+        jmp end_read_buffer
+
+    atoh_jump:
+        call atoh
+        jmp end_read_buffer
 
     end_read_buffer:
 
@@ -257,7 +274,6 @@ atoi:
     ret
 
 
-; convert string into a hex
 atoh:
     xor bx, bx
     mov di, hex_result
@@ -347,6 +363,8 @@ section .data:
 
     c db 0
     result db 0
+
+    marker db 0
 
 
 section .bss:

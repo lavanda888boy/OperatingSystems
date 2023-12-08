@@ -1,9 +1,11 @@
-org 1000h
-
 section .text
     global _start
 
 _start:
+    ; receive segment:offset pair from the bootloader
+    mov [add1], ax
+    mov [add2], bx
+
     mov ah, 00h
     int 13h
 
@@ -57,12 +59,15 @@ increment_ram_marker:
 display_command_list:
     call find_current_cursor_position
 
-    mov ax, 0h
+    mov ax, [add2]
 	mov es, ax
     mov bh, [page_number]
 	mov bl, 07h
 	mov cx, prompt_length
-	mov bp, prompt
+	
+    mov ax, prompt
+    add ax, [add1]
+    mov bp, ax
 
 	mov ax, 1301h
 	int 10h
@@ -847,5 +852,8 @@ section .bss
     adress_1 resb 2
     adress_2 resb 2
     memory_bytes resb 2
+
+    add1 resb 2
+    add2 resb 2
 
     repeated_buffer resb 255
