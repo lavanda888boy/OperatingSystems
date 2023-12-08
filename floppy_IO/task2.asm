@@ -44,6 +44,11 @@ _start:
     jmp newline_simple_call
 
 
+run_bootloader:
+    call newline
+    jmp 0000h:7c00h
+
+
 increment_ram_marker:
     inc byte [ram_marker]
     jmp read_segment
@@ -794,8 +799,8 @@ end:
 section .data
     char_counter db 0
 
-    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy): "
-    prompt_length equ 68
+    prompt dd "Choose the command (1-keyboard/floppy, 2-floppy/ram, 3-ram/floppy, 4-reboot): "
+    prompt_length equ 78
 
     write_count_prompt dd "N or Q: "
     write_count_prompt_length equ 8
