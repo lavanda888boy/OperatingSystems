@@ -4,11 +4,16 @@ section .text
     global _start
 
 _start:
-    mov byte [page], 0
-
     ; receive segment:offset pair from the bootloader
     mov [add1], ax
     mov [add2], bx
+    
+    jmp menu
+
+
+menu:
+    mov byte [page], 0
+    mov word [line_number], 10
 
     ; set text video mode
     mov ah, 00h 
@@ -27,6 +32,29 @@ _start:
 
 	mov ax, 1301h
 	int 10h 
+
+    call newline
+
+    ; print reboot option
+    ; print command disclaimer
+    call find_current_cursor_position
+    
+    mov ax, 0h
+	mov es, ax
+    mov bh, [page]
+	mov bl, 07h
+    mov cx, reboot_prompt_length
+	mov bp, reboot_prompt
+
+	mov ax, 1301h
+	int 10h 
+
+    ; read character
+    mov ah, 00h
+    int 16h
+
+    cmp al, 'r'
+    je reboot
 
     call newline
 
@@ -103,9 +131,20 @@ _start:
     int 16h
 
     call change_page_number
-    jmp _start
+    jmp menu
     
     jmp end
+
+
+reboot:
+    call change_page_number
+
+    ; set text video mode
+    mov ah, 00h 
+    mov al, 2
+    int 10h 
+
+    jmp 0000h:7c00h
 
 
 read_buffer:
@@ -229,7 +268,7 @@ draw_rainbow:
     
     ret
 
-
+; HARDCODE INITIAL LINE NUMBER
 draw_stripe:
 
     stripe_loop:
@@ -326,6 +365,9 @@ end:
 section .data
     disclaimer db "Welcome to the rainbow command! Remember, the page has the size 320x200!"
     disclaimer_length equ 72
+
+    reboot_prompt db "Press r to reboot or any other key to continue: "
+    reboot_prompt_length equ 47
 
     stripe_width_prompt db "Stripe width: "
     stripe_width_prompt_length equ 14
