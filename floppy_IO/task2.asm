@@ -52,7 +52,7 @@ increment_ram_marker:
 display_command_list:
     call find_current_cursor_position
 
-    mov ax, [add2]
+    mov ax, 0h
 	mov es, ax
     mov bh, [page_number]
 	mov bl, 07h

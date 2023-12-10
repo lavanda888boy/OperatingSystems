@@ -1,5 +1,3 @@
-org 1000h
-
 section .text
     global _start
 
@@ -7,6 +5,29 @@ _start:
     ; receive segment:offset pair from the bootloader
     mov [add1], ax
     mov [add2], bx
+
+    mov si, [add1]
+    mov ds, [add2]
+
+    mov byte [video_mode], 13
+    mov byte [pixel_color], 0
+
+    mov byte [line_length], 0
+    mov byte [stripe_width], 0
+
+    mov word [left_indent], 10
+    mov word [stripe_indent], 0
+
+    mov word [line_number], 10
+
+    mov byte [stripes], 0
+    mov word [stripe_height], 0
+
+    mov byte [char_counter], 0
+    mov byte [result], 0
+
+    mov byte [page], 0
+    mov byte [c], 0
     
     jmp menu
 
@@ -23,12 +44,15 @@ menu:
     ; print command disclaimer
     call find_current_cursor_position
     
-    mov ax, 0h
+    mov ax, [add2]
 	mov es, ax
     mov bh, [page]
 	mov bl, 07h
     mov cx, disclaimer_length
-	mov bp, disclaimer
+
+    mov ax, disclaimer
+    add ax, word [add1]
+	mov bp, ax
 
 	mov ax, 1301h
 	int 10h 
@@ -39,12 +63,15 @@ menu:
     ; print command disclaimer
     call find_current_cursor_position
     
-    mov ax, 0h
+    mov ax, [add2]
 	mov es, ax
     mov bh, [page]
 	mov bl, 07h
     mov cx, reboot_prompt_length
-	mov bp, reboot_prompt
+
+	mov ax, reboot_prompt
+    add ax, word [add1]
+	mov bp, ax
 
 	mov ax, 1301h
 	int 10h 
@@ -61,12 +88,15 @@ menu:
     ; input stripe width
     call find_current_cursor_position
     
-    mov ax, 0h
+    mov ax, [add2]
 	mov es, ax
     mov bh, [page]
 	mov bl, 07h
     mov cx, stripe_width_prompt_length
-	mov bp, stripe_width_prompt
+	
+    mov ax, stripe_width_prompt
+    add ax, word [add1]
+	mov bp, ax
 
 	mov ax, 1301h
 	int 10h 
@@ -83,12 +113,15 @@ menu:
     ; input stripe height
     call find_current_cursor_position
     
-    mov ax, 0h
+    mov ax, [add2]
 	mov es, ax
     mov bh, [page]
 	mov bl, 07h
     mov cx, stripe_height_prompt_length
-	mov bp, stripe_height_prompt
+	
+    mov ax, stripe_height_prompt
+    add ax, word [add1]
+	mov bp, ax
 
 	mov ax, 1301h
 	int 10h 
@@ -106,12 +139,15 @@ menu:
     ; input stripe indent
     call find_current_cursor_position
     
-    mov ax, 0h
+    mov ax, [add2]
 	mov es, ax
     mov bh, [page]
 	mov bl, 07h
     mov cx, stripe_indent_prompt_length
-	mov bp, stripe_indent_prompt
+	
+    mov ax, stripe_indent_prompt
+    add ax, word [add1]
+	mov bp, ax
 
 	mov ax, 1301h
 	int 10h 
@@ -148,7 +184,6 @@ reboot:
 
 
 read_buffer:
-
     read_char:
         ; read character
         mov ah, 00h
@@ -268,7 +303,7 @@ draw_rainbow:
     
     ret
 
-; HARDCODE INITIAL LINE NUMBER
+
 draw_stripe:
 
     stripe_loop:
@@ -378,29 +413,28 @@ section .data
     stripe_height_prompt db "Stripe height: "
     stripe_height_prompt_length equ 15
 
-    video_mode db 13
-    pixel_color db 0
-
-    line_length db 0
-    stripe_width db 0
-
-    left_indent dw 10
-    stripe_indent dw 0
-
-    line_number dw 10
-
-    stripes db 0
-    stripe_height dw 0
-
-    char_counter db 0
-    result db 0
-
-    page db 0
-
-    c db 0
-
 
 section .bss
+    video_mode resb 1
+    pixel_color resb 1
+
+    line_length resb 1
+    stripe_width resb 1
+
+    left_indent resb 2
+    stripe_indent resb 2
+
+    line_number resb 2
+
+    stripes resb 1
+    stripe_height resb 2
+
+    char_counter resb 1
+    result resb 1
+
+    page resb 1
+    c resb 1
+
     add1 resb 2
     add2 resb 2
     buffer resb 100
