@@ -551,25 +551,32 @@ print_buffer:
 
 
 write_to_floppy:
-    xor di, di
-    xor si, si
-
     ; repeat the string a certain number of times
+    mov al, byte [clear_repet]
+    mov bx, 512
+    imul ax, bx
+
     mov di, repeated_buffer
-    jmp write_buffer
+    mov cx, ax
+    xor ax, ax 
+    rep stosw
+
+    mov di, repeated_buffer
+    mov al, byte [repetitions]
+    mov byte [repet], al
 
     write_buffer:
         mov si, buffer
         movzx cx, byte [char_counter]
         rep movsb
 
-        dec byte [repetitions]
-        cmp byte [repetitions], 0
+        dec byte [repet]
+        cmp byte [repet], 0
         jg write_buffer
 
     ; find the number of sectors to write
-    mov al, byte [char_counter]
-    mov bl, byte [repetitions]
+    mov ax, word [char_counter]
+    mov bx, word [repetitions]
     imul ax, bx
 
     xor dx, dx
@@ -582,6 +589,7 @@ write_to_floppy:
     ; set the floppy mode to write
     mov ah, 03h
     mov al, byte [repetitions]
+    mov byte [clear_repet], al
 
     ; set the address of the first sector to write         
     mov dh, [head] 
@@ -818,7 +826,9 @@ section .data
 
     result db 0
 
+    repet db 0
     repetitions db 0
+    clear_repet db 0
 
     num_of_sectors db 0
 
