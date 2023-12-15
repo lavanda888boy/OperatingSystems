@@ -6,18 +6,6 @@ mov byte [marker], 0
 mov si, prompt
 call print
 
-mov ax, 0000h
-mov es, ax
-mov bx, 1000h
-
-mov ah, 02h
-mov al, 3
-mov ch, 0
-mov cl, 3
-mov dh, 0
-mov dl, 0
-int 13h
-
 call newline
 
 mov si, hts_prompt
