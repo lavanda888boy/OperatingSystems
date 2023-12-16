@@ -1,143 +1,151 @@
 org 7d00h
 
-mov byte [marker], 0
+mov byte [page_number], 0
+jmp main
 
-; print initial prompt
-mov si, prompt
-call print
+main:
+    mov byte [marker], 0
 
-call newline
+    ; print initial prompt
+    mov si, prompt
+    call print
 
-mov si, hts_prompt
-call print
-call newline
+    ; read character
+    mov ah, 00h
+    int 16h
 
+    call newline
 
-; print sector count prompt
-mov ah, 0eh
-mov al, '>'
-mov bl, 07h
-int 10h
-
-mov byte [result], 0
-call clear
-call read_buffer
-
-mov al, [result]
-mov byte [sc], al
-
-call newline
+    mov si, hts_prompt
+    call print
+    call newline
 
 
-; print head prompt
-mov ah, 0eh
-mov al, '>'
-mov bl, 07h
-int 10h
+    ; print sector count prompt
+    mov ah, 0eh
+    mov al, '>'
+    mov bl, 07h
+    int 10h
 
-mov byte [result], 0
-call clear
-call read_buffer
+    mov byte [result], 0
+    call clear
+    call read_buffer
 
-mov al, [result]
-mov byte [h], al
+    mov al, [result]
+    mov byte [sc], al
 
-call newline
-
-
-; print track prompt
-mov ah, 0eh
-mov al, '>'
-mov bl, 07h
-int 10h
-
-mov byte [result], 0
-call clear
-call read_buffer
-
-mov al, [result]
-mov byte [t], al
-
-call newline
+    call newline
 
 
-; print sector prompt
-mov ah, 0eh
-mov al, '>'
-mov bl, 07h
-int 10h
+    ; print head prompt
+    mov ah, 0eh
+    mov al, '>'
+    mov bl, 07h
+    int 10h
 
-mov byte [result], 0
-call clear
-call read_buffer
+    mov byte [result], 0
+    call clear
+    call read_buffer
 
-mov al, [result]
-mov byte [s], al
+    mov al, [result]
+    mov byte [h], al
 
-call newline
-call newline
+    call newline
 
-inc byte [marker]
 
-; print ram address prompt
-mov si, so_prompt
-call print
-call newline
+    ; print track prompt
+    mov ah, 0eh
+    mov al, '>'
+    mov bl, 07h
+    int 10h
 
-; print segment prompt
-mov ah, 0eh
-mov al, '>'
-mov bl, 07h
-int 10h
+    mov byte [result], 0
+    call clear
+    call read_buffer
 
-call clear
-call read_buffer
+    mov al, [result]
+    mov byte [t], al
 
-mov ax, [hex_result]
-mov [add1], ax
+    call newline
 
-call newline
 
-; print offset prompt
-mov ah, 0eh
-mov al, '>'
-mov bl, 07h
-int 10h
+    ; print sector prompt
+    mov ah, 0eh
+    mov al, '>'
+    mov bl, 07h
+    int 10h
 
-call clear
-call read_buffer
+    mov byte [result], 0
+    call clear
+    call read_buffer
 
-mov ax, [hex_result]
-mov [add2], ax
+    mov al, [result]
+    mov byte [s], al
 
-call newline
+    call newline
+    call newline
 
-call load_kernel
+    inc byte [marker]
 
-; print a prompt to load the kernel
-mov si, kernel_start
-call newline
-call print
+    ; print ram address prompt
+    mov si, so_prompt
+    call print
+    call newline
 
-; read option
-mov ah, 00h
-int 16h
+    ; print segment prompt
+    mov ah, 0eh
+    mov al, '>'
+    mov bl, 07h
+    int 10h
 
-; display character as TTY
-mov ah, 0eh
-mov bl, 07h
-int 10h
+    call clear
+    call read_buffer
 
-call newline
-call newline
+    mov ax, [hex_result]
+    mov [add1], ax
 
-; remember segment and offset in ax:bx
-mov ax, [add1]
-mov bx, [add2]
+    call newline
 
-; jump to the loaded NASM script
-add ax, bx
-jmp ax
+    ; print offset prompt
+    mov ah, 0eh
+    mov al, '>'
+    mov bl, 07h
+    int 10h
+
+    call clear
+    call read_buffer
+
+    mov ax, [hex_result]
+    mov [add2], ax
+
+    call newline
+
+    call load_kernel
+
+    ; print a prompt to load the kernel
+    mov si, kernel_start
+    call newline
+    call print
+
+    ; read option
+    mov ah, 00h
+    int 16h
+
+    ; display character as TTY
+    mov ah, 0eh
+    mov bl, 07h
+    int 10h
+
+    call newline
+    call newline
+
+    ; remember segment and offset in ax:bx
+    mov ax, [add1]
+    mov bx, [add2]
+
+    ; jump to the loaded NASM script
+    add ax, bx
+    jmp ax
 
 
 load_kernel:
@@ -170,6 +178,7 @@ load_kernel:
 
 
 read_buffer:
+    mov byte [c], 0
 
     read_char:
         ; read character
@@ -197,6 +206,9 @@ read_buffer:
         jmp read_char
     
     hdl_enter:
+        cmp byte [c], 0
+        je tomain
+
         mov byte [si], 0
         mov si, buffer
 
@@ -240,6 +252,11 @@ read_buffer:
     end_read_buffer:
 
     ret
+
+
+tomain:
+    call change_page_number
+    jmp main
 
 
 atoi:
@@ -326,6 +343,15 @@ cursor:
     ret
 
 
+change_page_number:
+    inc byte [page_number]
+    mov ah, 05h
+    mov al, [page_number]
+    int 10h
+
+    ret
+
+
 newline:
     call cursor
 
@@ -341,7 +367,7 @@ newline:
 section .data:
     prompt db 'Welcome, Sevastian. Press any key to continue: $'
     hts_prompt db "Enter CHTS script address$"
-    so_prompt db "Enter XXXX:YYYY RAM address$"
+    so_prompt db "Enter offset:segment RAM address$"
     kernel_start db "Press any key to load the kernel: $"
 
     sc db 0
@@ -352,6 +378,7 @@ section .data:
     c db 0
     result db 0
 
+    page_number db 0
     marker db 0
 
 

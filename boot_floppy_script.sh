@@ -19,7 +19,7 @@ truncate -s 1474560 mini_bootloader.bin
 mv mini_bootloader.bin $floppy_image
 
 dd if="bootloader.bin" of="$floppy_image" bs=512 seek=1 conv=notrunc
-dd if="$binary_file" of="$floppy_image" bs=512 seek=3 conv=notrunc
+dd if="$binary_file" of="$floppy_image" bs=512 seek=786 conv=notrunc
 
 echo "Binary file '$binary_file' successfully added to floppy image '$floppy_image'."
 
